@@ -1,0 +1,500 @@
+#############################
+# Name: Daniel Frankel
+# Date: November 10th, 2020
+# Description: Snake Game
+#############################
+
+import pygame
+from pygame import mixer  # for music
+import sys
+import time
+from random import randrange
+from math import dist  # to calculate distance between two points
+
+pygame.init()  # initializes program
+pygame.mixer.init()  # initializes mixer
+
+# Project Dimensions
+screenX = 800
+screenY = 675
+surface = pygame.display.set_mode((screenX, screenY),
+                                  flags=pygame.HWSURFACE and pygame.SRCALPHA and pygame.DOUBLEBUF)  # Sets display size
+running = True
+protection = True
+
+clock = pygame.time.Clock()
+FPS = 165
+
+# Colours
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+GREEN = (0, 200, 0)
+YELLOW = (200, 200, 0)
+SEA_BLUE = (0, 106, 255)
+SEA_GREEN = (0, 237, 118)
+
+# snake's properties
+BODY_SIZE = 13
+H_SPEED = 25  # space between triangles
+V_SPEED = 25  # space between triangles
+speedX = 0
+speedY = -V_SPEED
+seg_x = [int(screenX / 2)] * 3  # x coordinate for triangles
+seg_y = [screenY, screenY + V_SPEED, screenY + 2 * V_SPEED]  # y coordinate for triangles
+score = 0
+timer = 20
+delayed = 70  # the speed of the game
+
+# Buttons
+pos = pygame.mouse.get_pos()  # position of the mouse
+opacity1 = 0
+opacity2 = 0
+opacity3 = 0
+one_white = False  # for text
+one_black = True
+two_white = False
+two_black = True
+three_white = False
+three_black = True
+
+# fish variables
+fish_x = randrange(50, 750, 25)  # randomizing the location of the fish
+fish_y = randrange(125, 625, 25)
+poison_fish_x = randrange(50, 750, 25)  # randomizing the location of the poisonous fish
+poison_fish_y = randrange(125, 625, 25)
+
+# Time
+start_time = time.time()  # setting start time to the time.time() function
+
+# Music
+splash = mixer.Sound('FishSplashing.mp3')
+incorrect = mixer.Sound('wrong.mp3')
+music = True  # so that music can play when you come back to main menu
+
+# Defining Images
+image = pygame.image.load('underwater.png')
+image2 = pygame.image.load('banner.jpg')
+image3 = pygame.image.load('fishy.png')
+image4 = pygame.image.load('poison_fish.png')
+image5 = pygame.image.load('snake_game_logo.png')
+image6 = pygame.image.load('underwater.png')
+image7 = pygame.image.load('keys_game.png')
+
+# Defining Miscellaneous
+word = pygame.font.SysFont('GAMERIA', 30)
+word2 = pygame.font.SysFont('GAMERIA', 50)
+word3 = pygame.font.SysFont('GAMERIA', 120)
+rect = image3.get_rect()
+rect2 = image4.get_rect()
+
+# Rendering Images
+image = pygame.transform.scale(image, (screenX, screenY - 75))
+image2 = pygame.transform.scale(image2, (screenX, 75))
+image3 = pygame.transform.scale(image3, (75, 50))
+image4 = pygame.transform.scale(image4, (75, 75))
+image5 = pygame.transform.scale(image5, (300, 300))
+image6 = pygame.transform.scale(image6, (screenX, screenY - 75))
+image7 = pygame.transform.scale(image7, (200, 200))
+
+# Rendering Texts
+text2 = word2.render("Sea Snake", True, WHITE)
+text3 = word.render("Time Left", True, WHITE)
+text5 = word2.render("Main Menu", True, WHITE)
+text6 = word2.render("Play", True, BLACK)
+text7 = word2.render("Help", True, BLACK)
+text8 = word2.render("Play", True, WHITE)
+text9 = word2.render("Help", True, WHITE)
+text10 = word2.render("Help Menu", True, WHITE)
+text11 = word2.render("Game Over", True, WHITE)
+text12 = word2.render("Back", True, WHITE)
+text13 = word2.render("Back", True, BLACK)
+text14 = word3.render("Game Over", True, BLACK)
+text15 = word.render("Your final score was", True, BLACK)
+text17 = word2.render("Play Again", True, BLACK)
+text18 = word2.render("Main Menu", True, BLACK)
+text19 = word2.render("Play Again", True, WHITE)
+text20 = word2.render("Main Menu", True, WHITE)
+text21 = word.render("Eat        To Increase Your Score", True, BLACK)
+text22 = word.render("Do Not Eat         Or It Will Decrease Your Score", True, BLACK)
+text23 = word.render("Move Up", True, BLACK)
+text24 = word.render("Move Down", True, BLACK)
+text25 = word.render("Move Left", True, BLACK)
+text26 = word.render("Move Right", True, BLACK)
+
+# Rendering Miscellaneous
+rect.center = (fish_x, fish_y)  # centering the fish
+rect2.center = (poison_fish_x, poison_fish_y)  # centering the poisonous fish
+
+
+class Button:  # button class
+
+    def __init__(self, colour, opacity, stroke_weight, x, y, width, height):  # variables to create button
+        self.colour = colour
+        self.opacity = opacity
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.stroke_weight = stroke_weight
+
+    def create_button(self):  # code to create physical button
+        pygame.draw.rect(surface, self.colour, (self.x, self.y, self.width, self.height), self.stroke_weight)
+
+    def fade(self, opacity):  # to change the fill of button
+        global surface
+        fade = pygame.Surface((self.width, self.height))
+        fade.fill((0, 0, 0))
+        fade.set_alpha(opacity, opacity)  # changes shade of filling
+        surface.blit(fade, (self.x, self.y))
+
+    def activate(self, mouse):
+        if self.x + self.width > mouse[0] > self.x:  # checks if in x boundary
+            if self.y + self.height > mouse[1] > self.y:  # checks if in y boundary
+                return True
+        return False
+
+
+b1 = Button(BLACK, 0, 5, 53, 503, 295, 95)  # create button
+b2 = Button(BLACK, 0, 5, 453, 503, 295, 95)
+
+
+def redraw_screen():
+
+    surface.blit(image, (0, 75))
+    surface.blit(image2, (0, 0))
+    surface.blit(image3, (715, 15))
+
+    elapsed_time = time.time() - start_time  # calculating how much time has gone by
+    time_left = timer - int(elapsed_time)  # time left is determined by subtracting elapsed time from timer
+
+    text = word.render(str(score), True, YELLOW)
+    text4 = word.render(str(time_left), True, YELLOW)
+
+    surface.blit(text, (680, 27))
+    surface.blit(text2, (290, 15))
+    surface.blit(text3, (15, 27))
+    surface.blit(text4, (160, 27))
+
+    surface.blit(image3, rect)  # loads in fish
+    surface.blit(image4, (rect2.centerx - 25, rect2.centery - 25))  # loads in poisonous fish
+
+    pygame.draw.line(surface, BLACK, (0, 75), (screenX, 75), 5)
+
+    pygame.draw.polygon(surface, SEA_BLUE,
+                        ((seg_x[0], seg_y[0] - 15), (seg_x[0] - 15, seg_y[0] + 10), (seg_x[0] + 15, seg_y[0] + 10)), 0)
+    for j in range(1, len(seg_x)):
+        pygame.draw.polygon(surface, SEA_GREEN,
+                            ((seg_x[j], seg_y[j] - 15), (seg_x[j] - 15, seg_y[j] + 10), (seg_x[j] + 15, seg_y[j] + 10)),
+                            0)
+
+    pygame.display.update()  # display must be updated, in order to show the drawings
+
+
+def teleport():
+    if seg_x[0] > screenX:  # going off the right side
+        seg_x[0] = 0  # teleport to left side
+    elif seg_x[0] < 0:  # going off the left side
+        seg_x[0] = screenX  # teleport to right side
+    elif seg_y[0] > screenY:  # going off the bottom side
+        seg_y[0] = 100  # teleport to top side
+    elif seg_y[0] < 110:  # going off the top side
+        seg_y[0] = screenY - 0  # teleport to bottom side
+
+
+def main_menu():
+
+    global music
+
+    if music:
+        mixer.music.load('green-town.wav')  # main menu music
+        pygame.mixer.music.set_volume(0.5)
+        mixer.music.play(-1)  # -1 is put so it can play on loop
+        music = False
+
+    while True:
+
+        global opacity1, opacity2, one_white, one_black, two_white, two_black
+
+        surface.fill(WHITE)
+        surface.blit(image2, (0, 0))
+        surface.blit(image6, (0, 75))
+        surface.blit(image5, (250, 100))
+        surface.blit(text5, (270, 15))
+
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT:  # the quit button on the pop-out screen
+                pygame.quit()  # pygame ends
+                sys.exit()  # system ends
+            if e.type == pygame.MOUSEMOTION:
+                if b1.activate(pygame.mouse.get_pos()):
+                    opacity1 = 250
+                    one_black = False  # for colour of text
+                    one_white = True
+                else:
+                    opacity1 = 0
+                    one_white = False
+                    one_black = True
+                if b2.activate(pygame.mouse.get_pos()):
+                    opacity2 = 250
+                    two_black = False
+                    two_white = True
+                else:
+                    opacity2 = 0
+                    two_white = False
+                    two_black = True
+            if e.type == pygame.MOUSEBUTTONDOWN:
+                if b1.activate(pygame.mouse.get_pos()):
+                    main_game()
+            if e.type == pygame.MOUSEBUTTONDOWN:
+                if b2.activate(pygame.mouse.get_pos()):
+                    help_menu()
+
+        b1.create_button()  # creates the button
+        b2.create_button()
+        b1.fade(opacity1)  # changes colour of button
+        b2.fade(opacity2)
+
+        if one_white:
+            surface.blit(text8, (140, 530))
+        if one_black:
+            surface.blit(text6, (140, 530))
+        if two_white:
+            surface.blit(text9, (545, 530))
+        if two_black:
+            surface.blit(text7, (545, 530))
+
+        pygame.display.update()
+
+
+def help_menu():
+
+    while True:
+
+        global opacity3, three_white, three_black, music  # calls variables from outside scope
+
+        surface.fill(WHITE)
+        surface.blit(image2, (0, 0))
+        surface.blit(image6, (0, 75))
+        surface.blit(text10, (270, 15))
+
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT:  # the quit button on the pop-out screen
+                pygame.quit()  # pygame ends
+                sys.exit()  # system ends
+            if e.type == pygame.MOUSEMOTION:
+                if b1.activate(pygame.mouse.get_pos()):
+                    opacity3 = 250
+                    three_black = False
+                    three_white = True
+                else:
+                    opacity3 = 0
+                    three_white = False
+                    three_black = True
+            if e.type == pygame.MOUSEBUTTONDOWN:
+                if b1.activate(pygame.mouse.get_pos()):
+                    main_menu()
+                    music = True
+
+        b1.create_button()
+        b1.fade(opacity3)
+
+        if three_white:
+            surface.blit(text12, (135, 530))
+        if three_black:
+            surface.blit(text13, (135, 530))
+
+        surface.blit(text21, (40, 100))
+        surface.blit(text22, (40, 150))
+        surface.blit(text23, (320, 245))
+        surface.blit(text24, (300, 425))
+        surface.blit(text25, (125, 375))
+        surface.blit(text26, (500, 375))
+
+        surface.blit(image3, (95, 85))
+        surface.blit(image4, (215, 125))
+        surface.blit(image7, (285, 250))
+
+        pygame.display.update()
+
+
+def game_over():
+    while True:
+
+        global music
+
+        text16 = word.render(str(score), True, SEA_GREEN)  # prints final score
+
+        # Texts
+        surface.fill(WHITE)
+        surface.blit(image2, (0, 0))
+        surface.blit(image6, (0, 75))
+        surface.blit(text11, (270, 15))
+        surface.blit(text14, (100, 200))
+        surface.blit(text15, (200, 300))
+        surface.blit(text16, (530, 300))
+
+        global opacity1, opacity2, one_white, one_black, two_white, two_black
+
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT:  # the quit button on the pop-out screen
+                pygame.quit()  # pygame ends
+                sys.exit()  # system ends
+            if e.type == pygame.MOUSEMOTION:  # checks where mouse is
+                if b1.activate(pygame.mouse.get_pos()):
+                    opacity1 = 250
+                    one_black = False
+                    one_white = True
+                else:
+                    opacity1 = 0
+                    one_white = False
+                    one_black = True
+                if b2.activate(pygame.mouse.get_pos()):
+                    opacity2 = 250
+                    two_black = False
+                    two_white = True
+                else:
+                    opacity2 = 0
+                    two_white = False
+                    two_black = True
+            if e.type == pygame.MOUSEBUTTONDOWN:
+                if b1.activate(pygame.mouse.get_pos()):
+                    game_reset()
+                    mixer.music.pause()
+                    mixer.music.rewind()
+                    main_game()
+            if e.type == pygame.MOUSEBUTTONDOWN:
+                if b2.activate(pygame.mouse.get_pos()):
+                    game_reset()
+                    music = True
+                    main_menu()
+
+        b1.create_button()
+        b2.create_button()
+        b1.fade(opacity1)
+        b2.fade(opacity2)
+
+        if one_white:
+            surface.blit(text19, (65, 530))
+        if one_black:
+            surface.blit(text17, (65, 530))
+        if two_white:
+            surface.blit(text20, (465, 530))
+        if two_black:
+            surface.blit(text18, (465, 530))
+
+        pygame.display.update()
+
+
+def game_reset():  # resets game so it could be played again
+
+    global score, delayed, seg_x, seg_y, start_time, speedX, speedY, V_SPEED
+
+    start_time = time.time()
+
+    score = 0
+    delayed = 70
+    seg_x = [int(screenX / 2)] * 3
+    seg_y = [screenY, screenY + V_SPEED, screenY + 2 * V_SPEED]
+    speedX = 0
+    speedY = -V_SPEED
+
+    mixer.music.rewind()
+
+
+def main_game():
+
+    global running
+
+    mixer.music.load('8-bit-March.mp3')
+    pygame.mixer.music.set_volume(0.7)  # changing volume so sound effects can be properly heard
+    mixer.music.play(-1)
+
+    while running:  # as long as the game is running
+
+        clock.tick(FPS)
+        print(clock)
+
+        global score, speedX, speedY, fish_x, fish_y, poison_fish_x, poison_fish_y, delayed, start_time, protection
+
+        mixer.music.unpause()
+
+        if protection:
+            start_time = time.time()  # resets timer to 20
+            protection = False
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:  # the quit button on the pop-out screen
+                pygame.quit()  # pygame ends
+                sys.exit()  # system ends
+
+        keys = pygame.key.get_pressed()
+
+        # act upon key events
+        if keys[pygame.K_LEFT] and speedX == 0:  # checks if it is moving on the y-axis so it doesn't go backwards
+            speedX = -H_SPEED
+            speedY = 0
+        if keys[pygame.K_RIGHT] and speedX == 0:
+            speedX = H_SPEED
+            speedY = 0
+        if keys[pygame.K_UP] and speedY == 0:  # checks if it is moving on the x-axis so it doesn't go backwards
+            speedX = 0
+            speedY = -V_SPEED
+        if keys[pygame.K_DOWN] and speedY == 0:
+            speedX = 0
+            speedY = V_SPEED
+
+        # move all segments
+        for i in range(len(seg_x) - 1, 0, -1):  # start from the tail, and go backwards:
+            seg_x[i] = seg_x[i - 1]  # every segment takes the coordinates
+            seg_y[i] = seg_y[i - 1]  # of the previous one
+
+        # move the head
+        seg_x[0] = seg_x[0] + speedX  # moving on x-axis
+        seg_y[0] = seg_y[0] + speedY  # moving on y-axis
+
+        for i in range(1, len(seg_x)):
+            if dist((seg_x[0], seg_y[0]), (seg_x[i], seg_y[i])) < BODY_SIZE:
+                mixer.music.pause()
+                game_over()  # game over
+
+        if dist((seg_x[0], seg_y[0]), rect.center) < BODY_SIZE * 3:
+            fish_x = randrange(50, 750, 25)  # chooses new location
+            fish_y = randrange(125, 625, 25)
+            rect.center = (fish_x, fish_y)  # centers the image
+            score += 1  # score increases
+            seg_x.append(seg_x[-1])  # assign the same x and y coordinates
+            seg_y.append(seg_y[-1])  # as those of the last segment
+            start_time = time.time()  # resets timer to 20
+            splash.play()  # makes splashing sound
+
+        if dist((seg_x[0], seg_y[0]), rect2.center) < BODY_SIZE * 3:
+            incorrect.play()
+            poison_fish_x = randrange(50, 750, 25)  # chooses new location
+            poison_fish_y = randrange(125, 625, 25)
+            rect2.center = (poison_fish_x, poison_fish_y)  # centers the image
+            seg_x.pop(-1)  # removing a bit from tail
+            seg_y.pop(-1)
+            if score > 0:  # so the player cannot get a negative score
+                score -= 1  # score decreases
+
+        # update the screen
+        redraw_screen()
+        teleport()
+
+        if int(time.time() - start_time) >= timer:  # if the timer runs out
+            mixer.music.pause()
+            game_over()
+
+        if 40 > score >= 20:
+            delayed = 65  # slowest speed (after initial value)
+        elif 60 > score >= 40:
+            delayed = 60
+        elif score >= 60:
+            delayed = 55  # fastest speed
+
+        pygame.time.delay(delayed)  # the delay determines how fast the snake will move
+
+
+main_menu()
+
+pygame.quit()  # always quit pygame when done!
