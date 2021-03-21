@@ -1,9 +1,3 @@
-#############################
-# Name: Daniel Frankel
-# Date: November 10th, 2020
-# Description: Snake Game
-#############################
-
 import pygame
 from pygame import mixer  # for music
 import sys
